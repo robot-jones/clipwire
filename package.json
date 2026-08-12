@@ -1,0 +1,22 @@
+{
+  "name": "p2p-file-share-cli",
+  "version": "1.0.0",
+  "description": "A terminal-based, point-to-point file sharing utility written in TypeScript and powered by Node.js. This tool allows two users behind arbitrary NATs/firewalls to stream files directly to each other without intermediate cloud servers, using manual clipboard-based signaling.",
+  "license": "ISC",
+  "author": "robot-jones",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "prestart": "tsc",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "node-datachannel": "^0.32.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  }
+}
