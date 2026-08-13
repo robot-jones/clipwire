@@ -62,8 +62,23 @@ export class FakeChannel {
   }
 }
 
-// receiveFile registers its handler after an awaited open check
+// receiveFiles/sendFiles register handlers/kick off I/O after an awaited
+// open check or a real fs read, so a single microtask tick isn't always
+// enough to observe their next side effect.
 export const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+// Polls `predicate` once per tick until it's true, for tests that need to
+// react to a real (non-instant) async side effect - e.g. a FakeChannel
+// message emitted only after sendFiles has actually finished reading a
+// chunk of a file off disk - without hardcoding a fixed number of flushes
+// and risking flakiness.
+export async function waitUntil(predicate: () => boolean, maxTicks = 500): Promise<void> {
+  for (let i = 0; i < maxTicks; i++) {
+    if (predicate()) return;
+    await flush();
+  }
+  throw new Error(`waitUntil: condition not met within ${maxTicks} ticks`);
+}
 
 export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   const dir = mkdtempSync(join(tmpdir(), 'p2p-recv-'));

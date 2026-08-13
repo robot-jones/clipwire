@@ -3,8 +3,17 @@ export const LIGHT_SHADE = '░';
 
 export interface MetaFrame {
   type: 'META';
+  // Forward-slash separated, relative to the transfer root - just a bare
+  // basename for a standalone file, or "folder/sub/file.ext" when this file
+  // came from a recursed folder, so the receiver can rebuild that structure.
   filename: string;
   size: number;
+  // 0-based position of this file and the total file count for the whole
+  // session, so one offer/answer exchange can cover many files: the
+  // receiver keeps listening for more META frames until index reaches
+  // total - 1, rather than closing after the first file.
+  index: number;
+  total: number;
 }
 
 // Hash is sent in END rather than META so it can be computed while streaming

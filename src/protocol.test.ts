@@ -19,7 +19,12 @@ function barOf(line: string): string {
 }
 
 test('parseFrame round-trips a META frame', () => {
-  const meta: MetaFrame = { type: 'META', filename: 'a.txt', size: 123 };
+  const meta: MetaFrame = { type: 'META', filename: 'a.txt', size: 123, index: 0, total: 1 };
+  assert.deepEqual(parseFrame(JSON.stringify(meta)), meta);
+});
+
+test('parseFrame round-trips a META frame for a file inside a recursed folder', () => {
+  const meta: MetaFrame = { type: 'META', filename: 'Photos/trip/beach.jpg', size: 456, index: 2, total: 5 };
   assert.deepEqual(parseFrame(JSON.stringify(meta)), meta);
 });
 

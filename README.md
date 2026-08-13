@@ -66,13 +66,15 @@ Because this tool targets two explicit users who know each other, we bypass the 
 
 ## 2. Protocol & Data Transfer Phase
 
-Once the RTCDataChannel opens, communication follows a mini-protocol using structured binary or JSON frames:
+Once the RTCDataChannel opens, communication follows a mini-protocol using structured binary or JSON frames. This cycle repeats once per file, all over the *same* data channel - the offer/answer exchange only ever happens once per session, no matter how many files are sent (see "Sending Multiple Files & Folders" below).
 
 * Frame 1: Metadata (JSON String or Binary Header)
 
 ```json
-{ "type": "META", "filename": "ubuntu.iso", "size": 4831838208 }
+{ "type": "META", "filename": "ubuntu.iso", "size": 4831838208, "index": 0, "total": 1 }
 ```
+
+`filename` is forward-slash separated and relative to the transfer - a bare basename for a standalone file, or `"folder/sub/file.ext"` for a file that came from a recursed folder. `index`/`total` are the file's 0-based position and the session's total file count, which is how the receiver knows whether to expect another `META` frame after this file's `END`/`ACK` or to close out the session.
 
 * Frame 2..N: Data Chunks (Raw Binary)
 
@@ -90,7 +92,23 @@ The file is read in chunks (e.g., 16KB to 64KB) and sent down the data channel a
 { "type": "ACK" }
 ```
 
-The receiver sends this only after it has verified the streamed hash matches. The sender waits for it (and for its own send queue to fully drain) before closing the connection - closing right after queuing the last chunk is enough on loopback, but on a real network link it can tear the connection down before the data has actually finished transmitting.
+The receiver sends this only after it has verified the streamed hash matches. The sender waits for it (and for its own send queue to fully drain) before moving on to the next file (or closing the connection, after the last one) - closing right after queuing the last chunk is enough on loopback, but on a real network link it can tear the connection down before the data has actually finished transmitting.
+
+---
+
+## 3. Sending Multiple Files & Folders
+
+The sender's file prompt accepts more than one path, space-separated (quote any path that contains a space, e.g. `"My Photos" notes.txt`). Each path can be:
+
+* **A file** - sent under its bare basename, same as a single-file transfer.
+* **A folder** - recursed into and sent as every file it contains, with the folder's own name becoming the top segment of each file's relative path so the structure is rebuilt on the receiving end (e.g. `~/Photos` produces `Photos/a.jpg`, `Photos/trip/b.jpg`, ...). Symlinks inside a folder are skipped rather than followed.
+
+All of this still happens over a **single offer/answer exchange** - see "Protocol & Data Transfer Phase" above for how the wire protocol loops per file over the one connection. The receiver always writes into its current working directory, creating subdirectories as needed.
+
+A couple of known limitations worth knowing about:
+
+* Two files that resolve to the same relative path (e.g. two standalone files with the same basename) overwrite each other on the receiving end - relative paths aren't deduplicated.
+* The receiver validates every incoming relative path and refuses anything that would escape its destination directory (an `"../"` segment, an absolute path, etc.) - a zip-slip-style safeguard against a malicious or buggy peer, not something you need to think about in normal use.
 
 ---
 
@@ -151,3 +169,10 @@ To make it feel like a polished utility, use raw ANSI escape sequences (\x1b[A t
 * Percentage completion
 * Current throughput (MB/s) calculated via a rolling time window
 * Estimated Time Remaining (ETA)
+
+## 5. Multiple Files Over One Connection
+
+The offer/answer exchange only negotiates the WebRTC transport - it has nothing to do with how many files ride over it afterward. That meant multi-file/folder support (see above) didn't need a second signaling round trip, just a protocol change: `META` gained `index`/`total` fields, and the sender/receiver each loop the `META → data → END → ACK` cycle once per file over the same already-open data channel, only closing after the last one.
+
+* Gotcha: the receiver resets its per-file hash and metadata state on every `META`, but the *previous* file's `writeStream.end()` callback is still pending at that point (a real async disk write, not guaranteed to finish within a tick) - if that callback closes over the outer `hash`/`meta` variables directly rather than a snapshot taken when `END` arrived, it ends up digesting the *next* file's (empty) hash instead of its own. Snapshot both into local consts before the write stream's callback fires.
+* Gotcha: a folder's files are sent under relative paths (e.g. `Photos/trip/pic.jpg`) that the *peer* supplies - since that peer isn't a trusted input source for path strings, the receiver rejects anything containing `..`, an absolute path, or a backslash before ever touching the filesystem, rather than trusting it to `path.join` safely (classic zip-slip).

@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import nodeDataChannel from 'node-datachannel';
 import { createOffer, createAnswer, watchConnection } from './connection.js';
-import { sendFile } from "./stream-sender.js";
-import { receiveFile } from "./stream-receiver.js";
+import { collectFiles, sendFiles } from "./stream-sender.js";
+import { receiveFiles } from "./stream-receiver.js";
 
 const rl = createInterface({ input, output });
 
@@ -20,6 +19,19 @@ function resolveFilePath(input: string): string {
   if (trimmed === '~') return homedir();
   if (trimmed.startsWith('~/')) return homedir() + trimmed.slice(1);
   return trimmed;
+}
+
+// Splits raw prompt input into individual path tokens on whitespace,
+// honoring '...' or "..." quoting so a path containing spaces (a folder
+// named "My Photos", say) can still be entered alongside others.
+function splitPaths(raw: string): string[] {
+  const tokens: string[] = [];
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(raw)) !== null) {
+    tokens.push((match[1] ?? match[2] ?? match[3])!);
+  }
+  return tokens;
 }
 
 // Decode a pasted offer/answer token and sanity-check it's actually SDP text
@@ -48,9 +60,14 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
     'Interactive P2P file transfer over WebRTC (no server required).\n' +
     '\n' +
     'Steps:\n' +
-    '  Sender   : choose (s)end, enter a file path, share the offer token\n' +
+    '  Sender   : choose (s)end, enter one or more file/folder paths, share the offer token\n' +
     '  Receiver : choose (r)eceive, paste the offer token, share answer token\n' +
     '  Sender   : paste the answer token - transfer begins automatically\n' +
+    '\n' +
+    'Sending multiple files:\n' +
+    '  Enter several space-separated paths (quote any that contain spaces) to send them\n' +
+    '  all over the same offer/answer exchange. A folder path is sent recursively, with its\n' +
+    '  structure preserved on the receiving end.\n' +
     '\n' +
     'Env vars:\n' +
     '  CLIPWIRE_DEBUG=1        Verbose WebRTC connection logging, for diagnosing\n' +
@@ -83,9 +100,11 @@ async function main() {
 }
 
 async function send() {
-  const filePath = resolveFilePath(await rl.question('File path to send: '));
-  if (!existsSync(filePath)) {
-    throw new Error(`No such file: ${filePath}`);
+  const raw = await rl.question('File or folder path(s) to send (space-separated, quote paths with spaces): ');
+  const paths = splitPaths(raw).map(resolveFilePath);
+  const entries = collectFiles(paths);
+  if (entries.length === 0) {
+    throw new Error('No files found to send.');
   }
 
   console.log('\nGenerating offer, gathering ICE candidates...');
@@ -104,7 +123,7 @@ async function send() {
   // Both sides now have everything they need, so a real connection attempt
   // is genuinely underway - a bounded timeout is meaningful here.
   await watchConnection(pc, 'sender', 30_000);
-  await sendFile(dc, filePath);
+  await sendFiles(dc, entries);
   pc.close();
 }
 
@@ -126,7 +145,7 @@ async function receive() {
   // over email) - only a definitive failure should end the wait.
   await watchConnection(pc, 'receiver');
   const channel = await dc;
-  await receiveFile(channel, process.cwd());
+  await receiveFiles(channel, process.cwd());
   pc.close();
 }
 
