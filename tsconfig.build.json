@@ -1,0 +1,13 @@
+{
+  // The publishable build: same settings as tsconfig.json, but test files
+  // are excluded and output goes to ./dist instead of ./dist-test.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist"
+  },
+  // "exclude" replaces (rather than extends) the default exclude list, which
+  // normally auto-excludes outDir - so "include" is pinned to src explicitly
+  // to keep previously emitted dist/*.d.ts files from being picked up as inputs.
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts", "src/test-helpers.ts"]
+}

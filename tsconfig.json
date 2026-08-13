@@ -2,8 +2,11 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
+    // This is the full compile (source + tests), used to run the test
+    // suite via `node --test`. The publishable build lives in
+    // tsconfig.build.json, which excludes tests and outputs to ./dist.
     "rootDir": "./src",
-    "outDir": "./dist",
+    "outDir": "./dist-test",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
