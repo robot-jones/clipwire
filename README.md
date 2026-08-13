@@ -1,6 +1,22 @@
-# P2P File Share CLI
+# clipwire
 
 A terminal-based, point-to-point file sharing utility written in TypeScript and powered by Node.js. This tool allows two users behind arbitrary NATs/firewalls to stream files directly to each other without intermediate cloud servers, using manual clipboard-based signaling.
+
+---
+
+## Installation & Usage
+
+No install step required - run it directly via `npx`:
+
+```
+npx github:robot-jones/clipwire
+```
+
+This clones the repo, builds it, and starts the interactive prompt. To skip the "Ok to proceed?" confirmation on repeat runs, add `--yes`:
+
+```
+npx --yes github:robot-jones/clipwire
+```
 
 ---
 
@@ -69,15 +85,18 @@ The file is read in chunks (e.g., 16KB to 64KB) and sent down the data channel a
 ## Project Layout
 
 ```
-p2p-file-share-cli/
+clipwire/
 ├── src/
-│   ├── index.ts            # CLI entry point, argument parsing, interactive menu
-│   ├── connection.ts       # WebRTC configuration, ICE management, signaling helpers
-│   ├── protocol.ts         # Frame serialization/deserialization & message types
-│   ├── stream-sender.ts    # Logic for reading disk, handling backpressure & hashing
-│   └── stream-receiver.ts  # Logic for writing chunks to disk & progress tracking
+│   ├── index.ts                    # CLI entry point, argument parsing, interactive menu
+│   ├── connection.ts                # WebRTC configuration, ICE management, signaling helpers
+│   ├── protocol.ts                  # Frame serialization/deserialization & message types
+│   ├── stream-sender.ts             # Logic for reading disk, handling backpressure & hashing
+│   ├── stream-receiver.ts           # Logic for writing chunks to disk & progress tracking
+│   ├── test-helpers.ts              # Shared test doubles/helpers (FakeChannel, silenceProgress, ...)
+│   └── *.test.ts                    # Colocated unit tests, run via `npm test`
 ├── package.json
-├── tsconfig.json
+├── tsconfig.json                    # Full compile (source + tests) -> dist-test/, used by `npm test`
+├── tsconfig.build.json              # Publishable compile (source only) -> dist/, used by `npm run build`
 └── README.md
 ```
 
