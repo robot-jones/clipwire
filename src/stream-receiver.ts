@@ -69,7 +69,7 @@ export async function receiveFiles(dc: DataChannel, destDir: string): Promise<vo
           writeStream.on('error', reject);
 
           const label = frame.total > 1 ? `Receiving ${frame.index + 1}/${frame.total}: ` : 'Receiving: ';
-          console.log(`${label}${frame.filename} (${(frame.size / 1024 / 1024).toFixed(2)} MB)`);
+          console.log(`\n${label}${frame.filename} (${(frame.size / 1024 / 1024).toFixed(2)} MB)`);
           console.log(''); // reserve line for progress bar
         } else if (frame.type === 'END') {
           // Snapshot meta/hash before the write stream's callback fires -
@@ -85,7 +85,7 @@ export async function receiveFiles(dc: DataChannel, destDir: string): Promise<vo
               return;
             }
 
-            console.log(`\nFile received and verified: ${finishedMeta?.filename}`);
+            console.log(`File received and verified: ${finishedMeta?.filename}`);
             const ack: AckFrame = { type: 'ACK' };
             dc.sendMessage(JSON.stringify(ack));
             completed += 1;

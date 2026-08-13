@@ -72,8 +72,14 @@ export function watchConnection(pc: nodeDataChannel.PeerConnection, label: strin
     }, timeoutMs);
 
     const checkState = (state: string) => {
-      console.error(`[${label}] connection state: ${state}`);
+      // Once settled, later transitions (routine ICE/keepalive churn,
+      // eventual close once the transfer finishes, ...) are no longer
+      // useful to report - state-change diagnostics only matter while we're
+      // still trying to establish the connection. Logging them anyway would
+      // also interleave with the progress bar's own stdout writes during a
+      // transfer, corrupting its in-place redraw.
       if (settled) return;
+      console.error(`[${label}] connection state: ${state}`);
       if (state === 'connected') {
         settled = true;
         if (timer) clearTimeout(timer);
@@ -90,6 +96,7 @@ export function watchConnection(pc: nodeDataChannel.PeerConnection, label: strin
 
     pc.onStateChange(checkState);
     pc.onIceStateChange((state) => {
+      if (settled) return; // see the comment in checkState() above
       console.error(`[${label}] ICE state: ${state}`);
     });
     // Catch up in case the state already moved before this listener was
