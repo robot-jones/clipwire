@@ -67,7 +67,7 @@ Once the RTCDataChannel opens, communication follows a mini-protocol using struc
 * Frame 1: Metadata (JSON String or Binary Header)
 
 ```json
-{ "type": "META", "filename": "ubuntu.iso", "size": 4831838208, "hash": "e3b0c442..." }
+{ "type": "META", "filename": "ubuntu.iso", "size": 4831838208 }
 ```
 
 * Frame 2..N: Data Chunks (Raw Binary)
@@ -77,7 +77,7 @@ The file is read in chunks (e.g., 16KB to 64KB) and sent down the data channel a
 * Frame Final: Done Signal
 
 ```json
-{ "type": "END" }
+{ "type": "END", "hash": "e3b0c442..." }
 ```
 
 ---
