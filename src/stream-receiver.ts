@@ -1,8 +1,8 @@
 import { createWriteStream } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { type DataChannel } from './connection.js';
-import { parseFrame, renderProgress, type MetaFrame } from './protocol.js';
+import { type DataChannel, waitForDrain } from './connection.js';
+import { parseFrame, renderProgress, type AckFrame, type MetaFrame } from './protocol.js';
 
 export async function receiveFile(dc: DataChannel, destDir: string): Promise<void> {
   await new Promise<void>((resolve) => (dc.isOpen() ? resolve() : dc.onOpen(resolve)));
@@ -33,7 +33,13 @@ export async function receiveFile(dc: DataChannel, destDir: string): Promise<voi
               reject(new Error(`Hash mismatch - file may be corrupt.\n  expected: ${frame.hash}\n  got:      ${actual}`));
             } else {
               console.log(`\nFile received and verified: ${meta?.filename}`);
-              resolve();
+              const ack: AckFrame = { type: 'ACK' };
+              dc.sendMessage(JSON.stringify(ack));
+              // Wait for the ACK to actually leave the local send queue
+              // before resolving - the caller closes the connection right
+              // after, and closing too early could drop the ACK before the
+              // sender ever sees it, leaving it waiting on nothing.
+              waitForDrain(dc).then(resolve, reject);
             }
           });
         }

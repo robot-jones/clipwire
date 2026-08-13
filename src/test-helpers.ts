@@ -11,6 +11,9 @@ type Message = string | Buffer;
 export class FakeChannel {
   private handler: ((msg: Message) => void) | null = null;
 
+  /** Messages passed to sendMessage/sendMessageBinary, in order, for assertions. */
+  sent: Message[] = [];
+
   isOpen(): boolean {
     return true;
   }
@@ -27,6 +30,32 @@ export class FakeChannel {
     assert.ok(this.handler, 'handler was never registered');
     this.handler(msg);
   }
+
+  sendMessage(msg: string): boolean {
+    this.sent.push(msg);
+    return true;
+  }
+
+  sendMessageBinary(buf: Buffer): boolean {
+    this.sent.push(buf);
+    return true;
+  }
+
+  // No real network queue to drain, so there's nothing buffered - always
+  // "caught up" the instant it's checked.
+  bufferedAmount(): number {
+    return 0;
+  }
+
+  setBufferedAmountLowThreshold(_bytes: number): void {}
+
+  onBufferedAmountLow(cb: () => void): void {
+    cb();
+  }
+
+  onClosed(_cb: () => void): void {}
+
+  close(): void {}
 
   asDataChannel(): DataChannel {
     return this as unknown as DataChannel;

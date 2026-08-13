@@ -26,6 +26,7 @@ test('receiveFile writes the streamed chunks and verifies the hash', async (t) =
 
     await done;
     assert.deepEqual(readFileSync(join(dir, 'greetings.txt')), payload);
+    assert.deepEqual(dc.sent, [JSON.stringify({ type: 'ACK' })]);
   });
 });
 

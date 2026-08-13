@@ -6,6 +6,7 @@ import {
   renderProgress,
   FULL_BLOCK,
   LIGHT_SHADE,
+  type AckFrame,
   type EndFrame,
   type MetaFrame,
 } from './protocol.js';
@@ -25,6 +26,11 @@ test('parseFrame round-trips a META frame', () => {
 test('parseFrame round-trips an END frame', () => {
   const end: EndFrame = { type: 'END', hash: 'abc123' };
   assert.deepEqual(parseFrame(JSON.stringify(end)), end);
+});
+
+test('parseFrame round-trips an ACK frame', () => {
+  const ack: AckFrame = { type: 'ACK' };
+  assert.deepEqual(parseFrame(JSON.stringify(ack)), ack);
 });
 
 test('formatProgress draws an empty bar at 0%', () => {

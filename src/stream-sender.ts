@@ -1,11 +1,31 @@
 import { createReadStream, statSync } from 'node:fs';
 import { basename } from 'node:path';
 import { createHash } from 'node:crypto';
-import { type DataChannel } from './connection.js';
-import { renderProgress, type MetaFrame, type EndFrame } from './protocol.js';
+import { type DataChannel, waitForDrain } from './connection.js';
+import { parseFrame, renderProgress, type MetaFrame, type EndFrame } from './protocol.js';
 
 const CHUNK_SIZE = 64 * 1024;              // 64KB read chunks
 const BUFFER_HIGH_WATER = 4 * 1024 * 1024; // 4MB pause threshold
+const ACK_TIMEOUT_MS = 30_000;
+
+function waitForAck(dc: DataChannel, timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(
+        `Timed out after ${timeoutMs / 1000}s waiting for the receiver to acknowledge the transfer. The ` +
+        'connection may have dropped before the receiver finished verifying the file.'
+      ));
+    }, timeoutMs);
+
+    dc.onMessage((msg) => {
+      if (typeof msg !== 'string') return;
+      if (parseFrame(msg).type === 'ACK') {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+  });
+}
 
 export async function sendFile(dc: DataChannel, filePath: string): Promise<void> {
   await new Promise<void>((resolve) => (dc.isOpen() ? resolve() : dc.onOpen(resolve)));
@@ -43,5 +63,14 @@ export async function sendFile(dc: DataChannel, filePath: string): Promise<void>
 
   const end: EndFrame = { type: 'END', hash: hash.digest('hex') };
   dc.sendMessage(JSON.stringify(end));
+
+  // Make sure the END frame (and everything before it) has actually left
+  // the local send queue, then wait for the receiver's ACK confirming it
+  // got everything and the hash matched, before returning. The caller
+  // closes the connection right after this resolves - doing that any
+  // earlier risks tearing down the link while data is still in flight.
+  await waitForDrain(dc);
+  await waitForAck(dc, ACK_TIMEOUT_MS);
+
   console.log('File sent successfully.');
 }

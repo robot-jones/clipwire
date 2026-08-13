@@ -13,7 +13,15 @@ export interface EndFrame {
   hash: string;
 }
 
-export type Frame = MetaFrame | EndFrame;
+// Sent by the receiver once it has verified the hash. The sender waits for
+// this before closing the connection - without it, closing right after
+// queuing the last chunk can tear down the link before the data has
+// actually finished transmitting over a real (non-loopback) network.
+export interface AckFrame {
+  type: 'ACK';
+}
+
+export type Frame = MetaFrame | EndFrame | AckFrame;
 
 export function parseFrame(msg: string): Frame {
   return JSON.parse(msg) as Frame;
