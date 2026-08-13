@@ -1,13 +1,20 @@
 {
-  "name": "p2p-file-share-cli",
+  "name": "clipwire",
   "version": "1.0.0",
   "description": "A terminal-based, point-to-point file sharing utility written in TypeScript and powered by Node.js. This tool allows two users behind arbitrary NATs/firewalls to stream files directly to each other without intermediate cloud servers, using manual clipboard-based signaling.",
   "license": "ISC",
   "author": "robot-jones",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "bin": {
+    "clipwire": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
     "prestart": "npm run build",
     "start": "node dist/index.js",
     "pretest": "tsc",

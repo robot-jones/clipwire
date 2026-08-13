@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { createOffer, createAnswer } from './connection.js';
@@ -8,7 +9,7 @@ const rl = createInterface({ input, output });
 
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(
-    'Usage: node dist/index.js [--help]\n' +
+    'Usage: clipwire [--help]\n' +
     '\n' +
     'Interactive P2P file transfer over WebRTC (no server required).\n' +
     '\n' +
@@ -21,7 +22,7 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
 }
 
 async function main() {
-  console.log('P2P File Share\n');
+  console.log('clipwire\n');
 
   const answer = await rl.question('Do you want to (s)end or (r)eceive? ');
   const choice = answer.trim().toLowerCase();
